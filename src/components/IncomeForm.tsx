@@ -1,10 +1,10 @@
-import React, { ChangeEvent, FormEvent } from 'react';
-import { 
-  TextField, 
-  Button, 
-  Box, 
-  Grid, 
-  Typography, 
+import React, { useState, ChangeEvent, FormEvent } from 'react';
+import {
+  TextField,
+  Button,
+  Box,
+  Grid,
+  Typography,
   Tooltip,
   Accordion,
   AccordionSummary,
@@ -27,7 +27,7 @@ interface UserData {
 interface IncomeFormProps {
   userData: UserData;
   errors: Record<string, string>;
-  onUpdate: (field: keyof UserData | keyof DeductionsType, value: number) => void;
+  onUpdate: (userData: UserData) => void; // Modified onUpdate prop
   onCalculate: () => void;
   max80C: number;
   max80D: number;
@@ -35,7 +35,7 @@ interface IncomeFormProps {
 }
 
 const IncomeForm: React.FC<IncomeFormProps> = ({
-  userData,
+  userData: initialUserData, // Renamed to initialUserData
   errors,
   onUpdate,
   onCalculate,
@@ -43,11 +43,19 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
   max80D,
   maxNPS
 }) => {
+  const [localFormData, setLocalFormData] = useState<UserData>(initialUserData);
+
   const handleDeductionChange = (field: keyof DeductionsType) => (
     e: ChangeEvent<HTMLInputElement>
   ) => {
     const value = Math.min(Number(e.target.value), getMaxLimit(field));
-    onUpdate(field, value);
+    setLocalFormData(prev => ({
+      ...prev,
+      deductions: {
+        ...prev.deductions,
+        [field]: value,
+      },
+    }));
   };
 
   const handleIncomeChange = (field: keyof UserData) => (
@@ -55,7 +63,7 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
   ) => {
     const value = Number(e.target.value);
     if (value >= 0) {
-      onUpdate(field, value);
+      setLocalFormData(prev => ({ ...prev, [field]: value }));
     }
   };
 
@@ -71,6 +79,7 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
 
   const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    onUpdate(localFormData); // Update parent with local data
     onCalculate();
   };
 
@@ -105,7 +114,7 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
         <TextField
           label="Basic Salary (₹)"
           type="number"
-          value={userData.basicSalary}
+          value={localFormData.basicSalary} // Use localFormData
           onChange={handleIncomeChange('basicSalary')}
           error={!!errors.basicSalary}
           helperText={errors.basicSalary}
@@ -119,7 +128,7 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
         <TextField
           label="Variable Salary (₹)"
           type="number"
-          value={userData.variableSalary}
+          value={localFormData.variableSalary} // Use localFormData
           onChange={handleIncomeChange('variableSalary')}
           error={!!errors.variableSalary}
           helperText={errors.variableSalary}
@@ -133,7 +142,7 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
         <TextField
           label="Other Income (₹)"
           type="number"
-          value={userData.otherIncome}
+          value={localFormData.otherIncome} // Use localFormData
           onChange={handleIncomeChange('otherIncome')}
           error={!!errors.otherIncome}
           helperText={errors.otherIncome}
@@ -155,7 +164,7 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
                   <TextField
                     label="Section 80C"
                     type="number"
-                    value={userData.deductions.section80C}
+                    value={localFormData.deductions.section80C} // Use localFormData
                     onChange={handleDeductionChange('section80C')}
                     fullWidth
                     InputProps={{
@@ -174,7 +183,7 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
                   <TextField
                     label="Section 80D"
                     type="number"
-                    value={userData.deductions.section80D}
+                    value={localFormData.deductions.section80D} // Use localFormData
                     onChange={handleDeductionChange('section80D')}
                     fullWidth
                     InputProps={{
@@ -193,7 +202,7 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
                   <TextField
                     label="HRA Exemption"
                     type="number"
-                    value={userData.deductions.hraExemption}
+                    value={localFormData.deductions.hraExemption} // Use localFormData
                     onChange={handleDeductionChange('hraExemption')}
                     fullWidth
                     InputProps={{
@@ -212,7 +221,7 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
                   <TextField
                     label="LTA"
                     type="number"
-                    value={userData.deductions.lta}
+                    value={localFormData.deductions.lta} // Use localFormData
                     onChange={handleDeductionChange('lta')}
                     fullWidth
                     InputProps={{
@@ -231,7 +240,7 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
                   <TextField
                     label="NPS (80CCD 1B)"
                     type="number"
-                    value={userData.deductions.nps}
+                    value={localFormData.deductions.nps} // Use localFormData
                     onChange={handleDeductionChange('nps')}
                     fullWidth
                     InputProps={{
@@ -249,12 +258,12 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
           </AccordionDetails>
         </Accordion>
 
-        <Button 
-          variant="contained" 
+        <Button
+          variant="contained"
           type="submit"
           size="large"
           sx={{ mt: 2 }}
-          disabled={!userData.basicSalary || !userData.variableSalary || !userData.otherIncome}
+          disabled={!localFormData.basicSalary || !localFormData.variableSalary || !localFormData.otherIncome} // Use localFormData
         >
           Calculate Tax
         </Button>
@@ -263,4 +272,4 @@ const IncomeForm: React.FC<IncomeFormProps> = ({
   );
 };
 
-export default IncomeForm; 
+export default IncomeForm;

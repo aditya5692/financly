@@ -29,10 +29,10 @@ import {
   Paper as MuiPaper
 } from '@mui/material';
 import { ArrowBack, CheckCircle, AccountBalance, Receipt, Savings, Calculate, Info } from '@mui/icons-material';
-import { 
-  TaxRegime, 
-  TaxDetails, 
-  TaxBreakdown, 
+import {
+  TaxRegime,
+  TaxDetails,
+  TaxBreakdown,
   TaxSavingsRecommendation,
   DeductionsType,
   UserData
@@ -91,7 +91,7 @@ const TaxCalculator: React.FC = () => {
 
   const generateTaxSavingsRecommendations = (totalIncome: number, currentDeductions: DeductionsType): TaxSavingsRecommendation[] => {
     const recommendations: TaxSavingsRecommendation[] = [];
-    
+
     // Check Section 80C utilization
     if (currentDeductions.section80C < 150000) {
       recommendations.push({
@@ -138,7 +138,7 @@ const TaxCalculator: React.FC = () => {
   const calculateTax = (income: number, deductions: DeductionsType, regime: TaxRegime): TaxDetails => {
     let taxableIncome = income;
     let totalDeductions = 0;
-    
+
     if (regime === 'old') {
       totalDeductions = Object.values(deductions).reduce((a, b) => a + b, 0);
       taxableIncome -= totalDeductions;
@@ -197,7 +197,7 @@ const TaxCalculator: React.FC = () => {
     if (!validateInputs()) return;
 
     const totalIncome = userData.basicSalary + userData.variableSalary + userData.otherIncome;
-    
+
     // Generate tax savings recommendations
     const taxRecommendations = generateTaxSavingsRecommendations(totalIncome, userData.deductions);
     setRecommendations(taxRecommendations);
@@ -212,7 +212,7 @@ const TaxCalculator: React.FC = () => {
 
     // Determine recommended regime
     const taxes = [breakdown.old, breakdown.new, breakdown.revised];
-    breakdown.recommendedRegime = taxes.reduce((prev, curr) => 
+    breakdown.recommendedRegime = taxes.reduce((prev, curr) =>
       curr.totalTax < prev.totalTax ? curr : prev
     ).regime;
 
@@ -220,33 +220,35 @@ const TaxCalculator: React.FC = () => {
     setActiveStep(1);
   };
 
-  const handleUpdateUserData = (field: keyof UserData | keyof DeductionsType, value: number) => {
-    setUserData(prev => ({
-      ...prev,
-      ...(field in prev.deductions ? {
-        deductions: {
-          ...prev.deductions,
-          [field]: value
-        }
-      } : {
-        [field]: value
-      })
-    }));
+  const handleUpdateUserData = (newUserData: UserData) => {
+    setUserData(newUserData);
   };
 
   const handleApplyRecommendation = (recommendation: TaxSavingsRecommendation) => {
     switch (recommendation.type) {
       case 'section80C':
-        handleUpdateUserData('section80C', Math.min(150000, userData.deductions.section80C + 50000));
+        setUserData(prev => ({
+          ...prev,
+          deductions: { ...prev.deductions, section80C: Math.min(150000, prev.deductions.section80C + 50000) }
+        }));
         break;
       case 'section80D':
-        handleUpdateUserData('section80D', Math.min(25000, userData.deductions.section80D + 5000));
+        setUserData(prev => ({
+          ...prev,
+          deductions: { ...prev.deductions, section80D: Math.min(25000, prev.deductions.section80D + 5000) }
+        }));
         break;
       case 'nps':
-        handleUpdateUserData('nps', Math.min(50000, userData.deductions.nps + 10000));
+        setUserData(prev => ({
+          ...prev,
+          deductions: { ...prev.deductions, nps: Math.min(50000, prev.deductions.nps + 10000) }
+        }));
         break;
       case 'hra':
-        handleUpdateUserData('hraExemption', Math.min(50000, userData.deductions.hraExemption + 15000));
+        setUserData(prev => ({
+          ...prev,
+          deductions: { ...prev.deductions, hraExemption: Math.min(50000, prev.deductions.hraExemption + 15000) }
+        }));
         break;
     }
     handleCalculate(); // Recalculate tax after applying recommendation
@@ -254,19 +256,19 @@ const TaxCalculator: React.FC = () => {
 
   const TaxRecommendations = ({ breakdown }: { breakdown: TaxBreakdown }) => {
     const recommendations = [];
-    
+
     if (userData.deductions.section80C < 150000) {
       recommendations.push(
         `Maximize Section 80C investments (₹${(150000 - userData.deductions.section80C).toLocaleString()} remaining)`
       );
     }
-    
+
     if (userData.deductions.nps < 50000) {
       recommendations.push(
         `Additional NPS contributions can save ₹${((50000 - userData.deductions.nps) * 0.3).toLocaleString()} tax`
       );
     }
-    
+
     if (userData.deductions.hraExemption === 0 && userData.basicSalary > 0) {
       recommendations.push("Claim HRA exemption if renting accommodation");
     }
@@ -283,8 +285,8 @@ const TaxCalculator: React.FC = () => {
             <List dense>
               {recommendations.map((rec, index) => (
                 <ListItem key={index} sx={{ py: 0.5 }}>
-                  <ListItemText 
-                    primary={`• ${rec}`} 
+                  <ListItemText
+                    primary={`• ${rec}`}
                     primaryTypographyProps={{ variant: 'body2' }}
                   />
                 </ListItem>
@@ -303,12 +305,14 @@ const TaxCalculator: React.FC = () => {
   const IncomeForm: React.FC<{
     userData: UserData;
     errors: Record<string, string>;
-    onUpdate: (field: keyof UserData | keyof DeductionsType, value: number) => void;
+    onUpdate: (userData: UserData) => void; // Updated onUpdate prop
     onCalculate: () => void;
     max80C: number;
     max80D: number;
     maxNPS: number;
-  }> = ({ userData, errors, onUpdate, onCalculate, max80C, max80D, maxNPS }) => {
+  }> = ({ userData: initialUserData, errors, onUpdate, onCalculate, max80C, max80D, maxNPS }) => {
+    const [localFormData, setLocalFormData] = useState<UserData>(initialUserData);
+
     const getMaxLimit = (field: keyof DeductionsType): number => {
       switch (field) {
         case 'section80C': return max80C;
@@ -325,15 +329,21 @@ const TaxCalculator: React.FC = () => {
       const value = e.target.value;
       // Allow empty string for continuous typing
       if (value === '') {
-        onUpdate(field, 0);
+        setLocalFormData(prev => ({
+          ...prev,
+          deductions: { ...prev.deductions, [field]: 0 }
+        }));
         return;
       }
-      
+
       // Only process if the input is a valid number
       if (/^\d*\.?\d*$/.test(value)) {
         const numericValue = Number(value);
         const finalValue = Math.min(numericValue, getMaxLimit(field));
-        onUpdate(field, finalValue);
+        setLocalFormData(prev => ({
+          ...prev,
+          deductions: { ...prev.deductions, [field]: finalValue }
+        }));
       }
     };
 
@@ -343,7 +353,7 @@ const TaxCalculator: React.FC = () => {
       const value = e.target.value;
       // Allow empty string for continuous typing
       if (value === '') {
-        onUpdate(field, 0);
+        setLocalFormData(prev => ({ ...prev, [field]: 0 }));
         return;
       }
 
@@ -351,7 +361,7 @@ const TaxCalculator: React.FC = () => {
       if (/^\d*\.?\d*$/.test(value)) {
         const numericValue = Number(value);
         if (numericValue >= 0) {
-          onUpdate(field, numericValue);
+          setLocalFormData(prev => ({ ...prev, [field]: numericValue }));
         }
       }
     };
@@ -363,7 +373,7 @@ const TaxCalculator: React.FC = () => {
       isDeduction: boolean = false,
       maxLimit?: number
     ) => (
-      <Tooltip 
+      <Tooltip
         title={tooltip}
         placement="top-start"
         arrow
@@ -387,11 +397,14 @@ const TaxCalculator: React.FC = () => {
           }
           type="text"
           inputMode="numeric"
-          value={isDeduction 
-            ? userData.deductions[field as keyof DeductionsType].toString().replace(/^0+(?=\d)/, '')
-            : userData[field as keyof UserData].toString().replace(/^0+(?=\d)/, '')
+          value={isDeduction
+            ? localFormData.deductions[field as keyof DeductionsType]?.toString().replace(/^0+(?=\d)/, '')
+            : localFormData[field as keyof UserData]?.toString().replace(/^0+(?=\d)/, '')
           }
-          onChange={isDeduction ? handleDeductionChange(field as keyof DeductionsType) : handleIncomeChange(field as keyof UserData)}
+          onChange={isDeduction
+            ? handleDeductionChange(field as keyof DeductionsType)
+            : handleIncomeChange(field as keyof UserData)
+          }
           error={!!errors[field]}
           helperText={maxLimit ? `Maximum limit: ₹${maxLimit.toLocaleString()}` : errors[field]}
           required
@@ -407,11 +420,16 @@ const TaxCalculator: React.FC = () => {
       </Tooltip>
     );
 
+    const handleSubmit = () => {
+      onUpdate(localFormData);
+      onCalculate();
+    };
+
     return (
       <Box>
         {/* Income Section */}
         <Box sx={{ mb: 4 }}>
-          <Typography variant="h6" gutterBottom sx={{ 
+          <Typography variant="h6" gutterBottom sx={{
             color: 'primary.main',
             fontWeight: 600,
             display: 'flex',
@@ -449,7 +467,7 @@ const TaxCalculator: React.FC = () => {
 
         {/* Exemptions Section */}
         <Box sx={{ mb: 4 }}>
-          <Typography variant="h6" gutterBottom sx={{ 
+          <Typography variant="h6" gutterBottom sx={{
             color: 'secondary.main',
             fontWeight: 600,
             display: 'flex',
@@ -482,7 +500,7 @@ const TaxCalculator: React.FC = () => {
 
         {/* Deductions Section */}
         <Box sx={{ mb: 4 }}>
-          <Typography variant="h6" gutterBottom sx={{ 
+          <Typography variant="h6" gutterBottom sx={{
             color: 'success.main',
             fontWeight: 600,
             display: 'flex',
@@ -533,13 +551,13 @@ const TaxCalculator: React.FC = () => {
         </Box>
 
         {/* Calculate Button */}
-        <Button 
-          variant="contained" 
-          onClick={onCalculate} 
+        <Button
+          variant="contained"
+          onClick={handleSubmit} // Call handleSubmit which updates parent state
           fullWidth
           size="large"
           startIcon={<Calculate />}
-          sx={{ 
+          sx={{
             mt: 2,
             py: 1.5,
             bgcolor: 'primary.main',
@@ -554,7 +572,7 @@ const TaxCalculator: React.FC = () => {
     );
   };
 
-  const TaxSummary: React.FC<{ 
+  const TaxSummary: React.FC<{
     breakdown: TaxBreakdown;
     recommendations: TaxSavingsRecommendation[];
     onApplyRecommendation: (recommendation: TaxSavingsRecommendation) => void;
@@ -563,7 +581,7 @@ const TaxCalculator: React.FC = () => {
       breakdown.recommendedRegime
     );
 
-    const totalIncome = breakdown[selectedRegime].taxableIncome + 
+    const totalIncome = breakdown[selectedRegime].taxableIncome +
       (breakdown[selectedRegime].totalDeductions || 0);
 
     const chartData = [
@@ -588,7 +606,7 @@ const TaxCalculator: React.FC = () => {
       <Box>
         {/* Title Section */}
         <Box sx={{ mb: 4 }}>
-          <Typography variant="h5" gutterBottom sx={{ 
+          <Typography variant="h5" gutterBottom sx={{
             color: 'text.primary',
             display: 'flex',
             alignItems: 'center',
@@ -602,19 +620,19 @@ const TaxCalculator: React.FC = () => {
         </Box>
 
         {/* Regime Selection */}
-        <Tabs 
+        <Tabs
           value={selectedRegime}
           onChange={(_, newValue: TaxRegime) => setSelectedRegime(newValue)}
           sx={{ mb: 3, borderBottom: 1, borderColor: 'divider' }}
         >
-          <StyledTab 
-            value="new" 
+          <StyledTab
+            value="new"
             label={
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 New regime
                 {breakdown.recommendedRegime === 'new' && (
-                  <Box 
-                    sx={{ 
+                  <Box
+                    sx={{
                       bgcolor: 'success.light',
                       color: 'success.main',
                       px: 1,
@@ -630,14 +648,14 @@ const TaxCalculator: React.FC = () => {
               </Box>
             }
           />
-          <StyledTab 
-            value="old" 
+          <StyledTab
+            value="old"
             label={
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 Old regime
                 {breakdown.recommendedRegime === 'old' && (
-                  <Box 
-                    sx={{ 
+                  <Box
+                    sx={{
                       bgcolor: 'success.light',
                       color: 'success.main',
                       px: 1,
@@ -662,9 +680,9 @@ const TaxCalculator: React.FC = () => {
             <Box sx={{ height: 300, mb: 3 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={chartData} layout="vertical">
-                  <XAxis 
-                    type="number" 
-                    tickFormatter={(value: number) => `₹${(value/1000).toFixed(0)}K`} 
+                  <XAxis
+                    type="number"
+                    tickFormatter={(value: number) => `₹${(value / 1000).toFixed(0)}K`}
                   />
                   <YAxis type="category" dataKey="name" />
                   <Bar dataKey="amount" />
@@ -731,12 +749,12 @@ const TaxCalculator: React.FC = () => {
           <Grid item xs={12} md={6}>
             {/* Tax Savings Alert */}
             {breakdown.recommendedRegime !== selectedRegime && (
-              <Alert 
-                severity="info" 
+              <Alert
+                severity="info"
                 sx={{ mb: 3 }}
                 action={
-                  <Button 
-                    color="info" 
+                  <Button
+                    color="info"
                     size="small"
                     onClick={() => {
                       if (breakdown.recommendedRegime === 'old' || breakdown.recommendedRegime === 'new') {
@@ -757,7 +775,7 @@ const TaxCalculator: React.FC = () => {
             {/* Recommendations Section */}
             {recommendations.length > 0 && (
               <Box sx={{ mb: 3 }}>
-                <Typography variant="h6" gutterBottom sx={{ 
+                <Typography variant="h6" gutterBottom sx={{
                   color: 'success.main',
                   fontWeight: 600,
                   display: 'flex',
@@ -770,9 +788,9 @@ const TaxCalculator: React.FC = () => {
                 <Grid container spacing={2}>
                   {recommendations.map((rec, index) => (
                     <Grid item xs={12} key={index}>
-                      <Card 
-                        variant="outlined" 
-                        sx={{ 
+                      <Card
+                        variant="outlined"
+                        sx={{
                           borderColor: 'success.light',
                           '&:hover': {
                             borderColor: 'success.main',
@@ -804,9 +822,9 @@ const TaxCalculator: React.FC = () => {
             )}
 
             {/* Filing Information */}
-            <Alert 
-              severity="info" 
-              sx={{ 
+            <Alert
+              severity="info"
+              sx={{
                 bgcolor: 'info.light',
                 color: 'info.dark',
                 '& .MuiAlert-icon': {
@@ -815,7 +833,7 @@ const TaxCalculator: React.FC = () => {
               }}
             >
               <AlertTitle>ITR filing due date: July 31, 2025</AlertTitle>
-              Tax calculations include 4% health and education cess. 
+              Tax calculations include 4% health and education cess.
               Actual liability may vary based on document submission.
             </Alert>
           </Grid>
@@ -826,8 +844,8 @@ const TaxCalculator: React.FC = () => {
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
-      <Typography variant="h4" gutterBottom align="center" sx={{ 
-        fontWeight: 700, 
+      <Typography variant="h4" gutterBottom align="center" sx={{
+        fontWeight: 700,
         color: 'primary.main',
         mb: 4,
         textShadow: '2px 2px 4px rgba(0,0,0,0.1)'
@@ -843,10 +861,10 @@ const TaxCalculator: React.FC = () => {
       {activeStep === 0 ? (
         <Grid container spacing={3}>
           <Grid item xs={12} md={8}>
-            <Paper 
-              elevation={3} 
-              sx={{ 
-                p: 4, 
+            <Paper
+              elevation={3}
+              sx={{
+                p: 4,
                 borderRadius: 2,
                 bgcolor: 'background.paper',
                 boxShadow: '0 4px 20px rgba(0,0,0,0.1)'
@@ -855,7 +873,7 @@ const TaxCalculator: React.FC = () => {
               <IncomeForm
                 userData={userData}
                 errors={errors}
-                onUpdate={handleUpdateUserData}
+                onUpdate={handleUpdateUserData} // Pass the function that updates the userData state
                 onCalculate={handleCalculate}
                 max80C={150000}
                 max80D={100000}
@@ -864,9 +882,9 @@ const TaxCalculator: React.FC = () => {
             </Paper>
           </Grid>
           <Grid item xs={12} md={4}>
-            <Card 
-              variant="outlined" 
-              sx={{ 
+            <Card
+              variant="outlined"
+              sx={{
                 mb: 2,
                 borderColor: 'info.light',
                 bgcolor: 'info.light',
@@ -883,19 +901,19 @@ const TaxCalculator: React.FC = () => {
                 <Divider sx={{ mb: 2, borderColor: 'info.main' }} />
                 <List dense>
                   <ListItem sx={{ py: 0.5 }}>
-                    <ListItemText 
+                    <ListItemText
                       primary="• Standard deduction: ₹50,000 for all employees"
                       primaryTypographyProps={{ color: 'text.primary' }}
                     />
                   </ListItem>
                   <ListItem sx={{ py: 0.5 }}>
-                    <ListItemText 
+                    <ListItemText
                       primary="• Section 80C limit: ₹1.5 lakh (EPF, PPF, ELSS, etc.)"
                       primaryTypographyProps={{ color: 'text.primary' }}
                     />
                   </ListItem>
                   <ListItem sx={{ py: 0.5 }}>
-                    <ListItemText 
+                    <ListItemText
                       primary="• NPS additional deduction: ₹50,000 under 80CCD(1B)"
                       primaryTypographyProps={{ color: 'text.primary' }}
                     />
@@ -908,18 +926,18 @@ const TaxCalculator: React.FC = () => {
       ) : (
         <Grid container spacing={3}>
           <Grid item xs={12}>
-            <Paper 
-              elevation={3} 
-              sx={{ 
-                p: 4, 
+            <Paper
+              elevation={3}
+              sx={{
+                p: 4,
                 borderRadius: 2,
                 bgcolor: 'background.paper',
                 boxShadow: '0 4px 20px rgba(0,0,0,0.1)'
               }}
             >
-              <Box sx={{ 
-                display: 'flex', 
-                justifyContent: 'space-between', 
+              <Box sx={{
+                display: 'flex',
+                justifyContent: 'space-between',
                 alignItems: 'center',
                 mb: 3
               }}>
@@ -931,7 +949,7 @@ const TaxCalculator: React.FC = () => {
                   startIcon={<ArrowBack />}
                   onClick={() => setActiveStep(0)}
                   size="small"
-                  sx={{ 
+                  sx={{
                     textTransform: 'none',
                     borderColor: 'primary.main',
                     color: 'primary.main',
@@ -945,21 +963,6 @@ const TaxCalculator: React.FC = () => {
                 </Button>
               </Box>
               {taxBreakdown && <TaxSummary breakdown={taxBreakdown} recommendations={recommendations} onApplyRecommendation={handleApplyRecommendation} />}
-              <Alert 
-                severity="info" 
-                sx={{ 
-                  mt: 2, 
-                  borderRadius: 1,
-                  bgcolor: 'info.light',
-                  color: 'info.dark',
-                  '& .MuiAlert-icon': {
-                    color: 'info.main'
-                  }
-                }}
-              >
-                Note: Tax calculations include 4% health and education cess. 
-                Actual liability may vary based on document submission.
-              </Alert>
             </Paper>
           </Grid>
         </Grid>
