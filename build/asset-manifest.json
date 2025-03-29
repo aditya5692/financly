@@ -1,0 +1,10 @@
+{
+  "files": {
+    "main.js": "/incometax/static/js/main.7f15bed2.js",
+    "index.html": "/incometax/index.html",
+    "main.7f15bed2.js.map": "/incometax/static/js/main.7f15bed2.js.map"
+  },
+  "entrypoints": [
+    "static/js/main.7f15bed2.js"
+  ]
+}
