@@ -1,4 +1,4 @@
-import React, { useState, ChangeEvent } from 'react';
+import React, { useState, ChangeEvent, useEffect } from 'react';
 import {
   Container,
   Typography,
@@ -24,32 +24,24 @@ import {
   MenuItem,
   InputAdornment,
   Tooltip,
-  Tabs,
-  Tab,
+  Tabs as MuiTabs,
+  Tab as MuiTab,
   Paper as MuiPaper
 } from '@mui/material';
 import { ArrowBack, CheckCircle, AccountBalance, Receipt, Savings, Calculate, Info } from '@mui/icons-material';
-import {
-  TaxRegime,
-  TaxDetails,
-  TaxBreakdown,
+import { 
+  TaxRegime, 
+  TaxDetails, 
+  TaxBreakdown, 
   TaxSavingsRecommendation,
   DeductionsType,
   UserData
 } from '../types/tax';
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer } from 'recharts';
 import { styled } from '@mui/material/styles';
+import IncomeForm from './IncomeForm';
 
-// types/tax.ts
-export interface TaxRegimeResult {
-  regime: 'old' | 'new' | 'revised';
-  totalTax: number;
-  effectiveTaxRate: number;
-  taxableIncome: number;
-  totalDeductions?: number;
-}
-
-const StyledTab = styled(Tab)(({ theme }) => ({
+const StyledTab = styled(MuiTab)(({ theme }) => ({
   textTransform: 'none',
   fontSize: '1rem',
   fontWeight: 600,
@@ -66,6 +58,9 @@ const TaxCalculator: React.FC = () => {
     basicSalary: 0,
     variableSalary: 0,
     otherIncome: 0,
+    housePropertyIncome: 0,
+    longTermCapitalGains: 0,
+    shortTermCapitalGains: 0,
     deductions: {
       section80C: 0,
       section80D: 0,
@@ -79,51 +74,55 @@ const TaxCalculator: React.FC = () => {
   const [taxBreakdown, setTaxBreakdown] = useState<TaxBreakdown | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [recommendations, setRecommendations] = useState<TaxSavingsRecommendation[]>([]);
+  const [originalIncome, setOriginalIncome] = useState(0);
+  const [menuTab, setMenuTab] = useState(0); // 0 = Income Tax Planner
 
   const validateInputs = (): boolean => {
+    const totalIncome =
+      Number(userData.basicSalary || 0) +
+      Number(userData.variableSalary || 0) +
+      Number(userData.otherIncome || 0) +
+      Number(userData.housePropertyIncome || 0) +
+      Number(userData.longTermCapitalGains || 0) +
+      Number(userData.shortTermCapitalGains || 0);
     const newErrors: Record<string, string> = {};
-    if (!userData.basicSalary || userData.basicSalary <= 0) newErrors.basicSalary = 'Valid basic salary required';
-    if (userData.variableSalary < 0) newErrors.variableSalary = 'Cannot be negative';
-    if (userData.otherIncome < 0) newErrors.otherIncome = 'Cannot be negative';
+    if (totalIncome <= 0) newErrors.totalIncome = 'Total income must be greater than zero';
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const generateTaxSavingsRecommendations = (totalIncome: number, currentDeductions: DeductionsType): TaxSavingsRecommendation[] => {
     const recommendations: TaxSavingsRecommendation[] = [];
+    const section80CNum = Number(currentDeductions.section80C || '0');
+    const section80DNum = Number(currentDeductions.section80D || '0');
+    const npsNum = Number(currentDeductions.nps || '0');
+    const hraExemptionNum = Number(currentDeductions.hraExemption || '0');
 
-    // Check Section 80C utilization
-    if (currentDeductions.section80C < 150000) {
+    if (section80CNum < 150000) {
       recommendations.push({
         type: 'section80C',
-        description: `You can save up to ₹${(150000 - currentDeductions.section80C).toLocaleString('en-IN')} more by utilizing Section 80C fully`,
-        potentialSavings: (150000 - currentDeductions.section80C) * 0.3,
+        description: `You can save up to ₹${(150000 - section80CNum).toLocaleString('en-IN')} more by utilizing Section 80C fully`,
+        potentialSavings: (150000 - section80CNum) * 0.3,
         applicableRegimes: ['old']
       });
     }
-
-    // Check Section 80D utilization
-    if (currentDeductions.section80D < 25000) {
+    if (section80DNum < 25000) {
       recommendations.push({
         type: 'section80D',
         description: `Consider health insurance premium deduction under Section 80D (up to ₹25,000)`,
-        potentialSavings: (25000 - currentDeductions.section80D) * 0.3,
+        potentialSavings: (25000 - section80DNum) * 0.3,
         applicableRegimes: ['old']
       });
     }
-
-    // Check NPS utilization
-    if (currentDeductions.nps < 50000) {
+    if (npsNum < 50000) {
       recommendations.push({
         type: 'nps',
-        description: `Additional NPS contribution of up to ₹${(50000 - currentDeductions.nps).toLocaleString('en-IN')} can save tax`,
-        potentialSavings: (50000 - currentDeductions.nps) * 0.3,
+        description: `Additional NPS contribution of up to ₹${(50000 - npsNum).toLocaleString('en-IN')} can save tax`,
+        potentialSavings: (50000 - npsNum) * 0.3,
         applicableRegimes: ['old']
       });
     }
-
-    // Check HRA optimization
-    if (currentDeductions.hraExemption < 50000) {
+    if (hraExemptionNum < 50000) {
       recommendations.push({
         type: 'hra',
         description: 'Consider optimizing HRA exemption by providing rent receipts',
@@ -131,19 +130,18 @@ const TaxCalculator: React.FC = () => {
         applicableRegimes: ['old']
       });
     }
-
     return recommendations;
   };
 
   const calculateTax = (income: number, deductions: DeductionsType, regime: TaxRegime): TaxDetails => {
     let taxableIncome = income;
     let totalDeductions = 0;
-
+    
     if (regime === 'old') {
-      totalDeductions = Object.values(deductions).reduce((a, b) => a + b, 0);
+      totalDeductions = Object.values(deductions).reduce((a, b) => a + Number(b), 0);
       taxableIncome -= totalDeductions;
     } else {
-      taxableIncome -= deductions.standardDeduction;
+      taxableIncome -= Number(deductions.standardDeduction);
     }
 
     taxableIncome = Math.max(0, taxableIncome);
@@ -181,7 +179,7 @@ const TaxCalculator: React.FC = () => {
       }
     }
 
-    const totalTax = tax * 1.04; // Including 4% cess
+    const totalTax = Math.round(tax * 1.04); // Including 4% cess and rounding off
     const effectiveTaxRate = (totalTax / income) * 100;
 
     return {
@@ -196,59 +194,83 @@ const TaxCalculator: React.FC = () => {
   const handleCalculate = () => {
     if (!validateInputs()) return;
 
-    const totalIncome = userData.basicSalary + userData.variableSalary + userData.otherIncome;
-
+    const totalIncome =
+      Number(userData.basicSalary || 0) +
+      Number(userData.variableSalary || 0) +
+      Number(userData.otherIncome || 0) +
+      Number(userData.housePropertyIncome || 0) +
+      Number(userData.longTermCapitalGains || 0) +
+      Number(userData.shortTermCapitalGains || 0);
+    
     // Generate tax savings recommendations
     const taxRecommendations = generateTaxSavingsRecommendations(totalIncome, userData.deductions);
     setRecommendations(taxRecommendations);
 
     // Calculate tax for all regimes
-    const breakdown: TaxBreakdown = {
+    const breakdown: TaxBreakdown & { originalIncome: number } = {
       old: calculateTax(totalIncome, userData.deductions, 'old'),
       new: calculateTax(totalIncome, userData.deductions, 'new'),
       revised: calculateTax(totalIncome, userData.deductions, 'revised'),
-      recommendedRegime: 'old'
+      recommendedRegime: 'old',
+      originalIncome: totalIncome
     };
 
     // Determine recommended regime
     const taxes = [breakdown.old, breakdown.new, breakdown.revised];
-    breakdown.recommendedRegime = taxes.reduce((prev, curr) =>
-      curr.totalTax < prev.totalTax ? curr : prev
-    ).regime;
+    const minTax = Math.min(...taxes.map(t => t.totalTax));
+    const regimesWithMinTax = taxes.filter(t => t.totalTax === minTax).map(t => t.regime);
+    breakdown.recommendedRegime = regimesWithMinTax[0]; // still pick one for tab default
+    const isTie = regimesWithMinTax.length > 1;
 
     setTaxBreakdown(breakdown);
+    setOriginalIncome(totalIncome);
     setActiveStep(1);
   };
 
-  const handleUpdateUserData = (newUserData: UserData) => {
-    setUserData(newUserData);
+  const handleUpdateUserData = (data: UserData) => {
+    setUserData(data);
   };
 
   const handleApplyRecommendation = (recommendation: TaxSavingsRecommendation) => {
     switch (recommendation.type) {
       case 'section80C':
-        setUserData(prev => ({
-          ...prev,
-          deductions: { ...prev.deductions, section80C: Math.min(150000, prev.deductions.section80C + 50000) }
-        }));
+        handleUpdateUserData({
+          ...userData,
+          deductions: {
+            ...userData.deductions,
+            section80C: Math.min(150000, Number(userData.deductions.section80C || "0") + 50000)
+          }
+        });
         break;
       case 'section80D':
-        setUserData(prev => ({
-          ...prev,
-          deductions: { ...prev.deductions, section80D: Math.min(25000, prev.deductions.section80D + 5000) }
-        }));
+        handleUpdateUserData({
+          ...userData,
+          deductions: {
+            ...userData.deductions,
+            section80D: Math.min(25000, Number(userData.deductions.section80D || "0") + 5000)
+          }
+        });
         break;
       case 'nps':
-        setUserData(prev => ({
-          ...prev,
-          deductions: { ...prev.deductions, nps: Math.min(50000, prev.deductions.nps + 10000) }
-        }));
+        handleUpdateUserData({
+          ...userData,
+          deductions: {
+            ...userData.deductions,
+            nps: Math.min(50000, Number(userData.deductions.nps || "0") + 5000)
+          }
+        });
         break;
       case 'hra':
-        setUserData(prev => ({
-          ...prev,
-          deductions: { ...prev.deductions, hraExemption: Math.min(50000, prev.deductions.hraExemption + 15000) }
-        }));
+        handleUpdateUserData({
+          ...userData,
+          deductions: {
+            ...userData.deductions,
+            hraExemption: Math.min(50000, Number(userData.deductions.hraExemption || "0") + 5000)
+          }
+        });
+        break;
+      default:
+        // No action
         break;
     }
     handleCalculate(); // Recalculate tax after applying recommendation
@@ -256,20 +278,20 @@ const TaxCalculator: React.FC = () => {
 
   const TaxRecommendations = ({ breakdown }: { breakdown: TaxBreakdown }) => {
     const recommendations = [];
-
-    if (userData.deductions.section80C < 150000) {
+    
+    if (Number(userData.deductions.section80C || "0") < 150000) {
       recommendations.push(
-        `Maximize Section 80C investments (₹${(150000 - userData.deductions.section80C).toLocaleString()} remaining)`
+        `Maximize Section 80C investments (₹${(150000 - Number(userData.deductions.section80C || "0")).toLocaleString()} remaining)`
       );
     }
-
-    if (userData.deductions.nps < 50000) {
+    
+    if (Number(userData.deductions.nps || "0") < 50000) {
       recommendations.push(
-        `Additional NPS contributions can save ₹${((50000 - userData.deductions.nps) * 0.3).toLocaleString()} tax`
+        `Additional NPS contributions can save ₹${((50000 - Number(userData.deductions.nps || "0")) * 0.3).toLocaleString()} tax`
       );
     }
-
-    if (userData.deductions.hraExemption === 0 && userData.basicSalary > 0) {
+    
+    if (Number(userData.deductions.hraExemption || "0") === 0 && Number(userData.basicSalary || "0") > 0) {
       recommendations.push("Claim HRA exemption if renting accommodation");
     }
 
@@ -285,8 +307,8 @@ const TaxCalculator: React.FC = () => {
             <List dense>
               {recommendations.map((rec, index) => (
                 <ListItem key={index} sx={{ py: 0.5 }}>
-                  <ListItemText
-                    primary={`• ${rec}`}
+                  <ListItemText 
+                    primary={`• ${rec}`} 
                     primaryTypographyProps={{ variant: 'body2' }}
                   />
                 </ListItem>
@@ -302,288 +324,102 @@ const TaxCalculator: React.FC = () => {
     );
   };
 
-  const IncomeForm: React.FC<{
-    userData: UserData;
-    errors: Record<string, string>;
-    onUpdate: (userData: UserData) => void; // Updated onUpdate prop
-    onCalculate: () => void;
-    max80C: number;
-    max80D: number;
-    maxNPS: number;
-  }> = ({ userData: initialUserData, errors, onUpdate, onCalculate, max80C, max80D, maxNPS }) => {
-    const [localFormData, setLocalFormData] = useState<UserData>(initialUserData);
+  // Update handlers to store string values
+  type UserDataField = keyof UserData;
+  type DeductionField = keyof DeductionsType;
 
-    const getMaxLimit = (field: keyof DeductionsType): number => {
-      switch (field) {
-        case 'section80C': return max80C;
-        case 'section80D': return max80D;
-        case 'standardDeduction': return 50000;
-        case 'nps': return maxNPS;
-        default: return 999999999;
-      }
-    };
-
-    const handleDeductionChange = (field: keyof DeductionsType) => (
-      e: ChangeEvent<HTMLInputElement>
-    ) => {
-      const value = e.target.value;
-      // Allow empty string for continuous typing
-      if (value === '') {
-        setLocalFormData(prev => ({
-          ...prev,
-          deductions: { ...prev.deductions, [field]: 0 }
-        }));
-        return;
-      }
-
-      // Only process if the input is a valid number
-      if (/^\d*\.?\d*$/.test(value)) {
-        const numericValue = Number(value);
-        const finalValue = Math.min(numericValue, getMaxLimit(field));
-        setLocalFormData(prev => ({
-          ...prev,
-          deductions: { ...prev.deductions, [field]: finalValue }
-        }));
-      }
-    };
-
-    const handleIncomeChange = (field: keyof UserData) => (
-      e: ChangeEvent<HTMLInputElement>
-    ) => {
-      const value = e.target.value;
-      // Allow empty string for continuous typing
-      if (value === '') {
-        setLocalFormData(prev => ({ ...prev, [field]: 0 }));
-        return;
-      }
-
-      // Only process if the input is a valid number
-      if (/^\d*\.?\d*$/.test(value)) {
-        const numericValue = Number(value);
-        if (numericValue >= 0) {
-          setLocalFormData(prev => ({ ...prev, [field]: numericValue }));
-        }
-      }
-    };
-
-    const renderTextField = (
-      label: string,
-      field: keyof UserData | keyof DeductionsType,
-      tooltip: string,
-      isDeduction: boolean = false,
-      maxLimit?: number
-    ) => (
-      <Tooltip
-        title={tooltip}
-        placement="top-start"
-        arrow
-        sx={{
-          '& .MuiTooltip-tooltip': {
-            bgcolor: 'rgba(0, 0, 0, 0.87)',
-            color: 'white',
-            fontSize: '0.875rem',
-            padding: '8px 12px',
-            borderRadius: '4px'
-          }
-        }}
-      >
-        <TextField
-          fullWidth
-          label={
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-              {label}
-              <Info fontSize="small" color="action" />
-            </Box>
-          }
-          type="text"
-          inputMode="numeric"
-          value={isDeduction
-            ? localFormData.deductions[field as keyof DeductionsType]?.toString().replace(/^0+(?=\d)/, '')
-            : localFormData[field as keyof UserData]?.toString().replace(/^0+(?=\d)/, '')
-          }
-          onChange={isDeduction
-            ? handleDeductionChange(field as keyof DeductionsType)
-            : handleIncomeChange(field as keyof UserData)
-          }
-          error={!!errors[field]}
-          helperText={maxLimit ? `Maximum limit: ₹${maxLimit.toLocaleString()}` : errors[field]}
-          required
-          inputProps={{
-            inputMode: 'numeric',
-            pattern: '[0-9]*',
-            style: { textAlign: 'left' }
-          }}
-          InputProps={{
-            startAdornment: <InputAdornment position="start">₹</InputAdornment>,
-          }}
-        />
-      </Tooltip>
-    );
-
-    const handleSubmit = () => {
-      onUpdate(localFormData);
-      onCalculate();
-    };
-
-    return (
-      <Box>
-        {/* Income Section */}
-        <Box sx={{ mb: 4 }}>
-          <Typography variant="h6" gutterBottom sx={{
-            color: 'primary.main',
-            fontWeight: 600,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 1
-          }}>
-            <AccountBalance color="primary" />
-            Income Details
-          </Typography>
-          <Divider sx={{ mb: 2 }} />
-          <Grid container spacing={3}>
-            <Grid item xs={12} md={4}>
-              {renderTextField(
-                "Basic Salary",
-                "basicSalary",
-                "Enter your annual basic salary amount before any deductions"
-              )}
-            </Grid>
-            <Grid item xs={12} md={4}>
-              {renderTextField(
-                "Variable Salary",
-                "variableSalary",
-                "Enter your annual variable pay, bonuses, and other performance-linked compensation"
-              )}
-            </Grid>
-            <Grid item xs={12} md={4}>
-              {renderTextField(
-                "Other Income",
-                "otherIncome",
-                "Enter any other taxable income like rental income, interest income, etc."
-              )}
-            </Grid>
-          </Grid>
-        </Box>
-
-        {/* Exemptions Section */}
-        <Box sx={{ mb: 4 }}>
-          <Typography variant="h6" gutterBottom sx={{
-            color: 'secondary.main',
-            fontWeight: 600,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 1
-          }}>
-            <Receipt color="secondary" />
-            Exemptions
-          </Typography>
-          <Divider sx={{ mb: 2 }} />
-          <Grid container spacing={3}>
-            <Grid item xs={12} md={6}>
-              {renderTextField(
-                "HRA Exemption",
-                "hraExemption",
-                "House Rent Allowance exemption based on your rent payments and city of residence",
-                true
-              )}
-            </Grid>
-            <Grid item xs={12} md={6}>
-              {renderTextField(
-                "LTA",
-                "lta",
-                "Leave Travel Allowance exemption for domestic travel expenses",
-                true
-              )}
-            </Grid>
-          </Grid>
-        </Box>
-
-        {/* Deductions Section */}
-        <Box sx={{ mb: 4 }}>
-          <Typography variant="h6" gutterBottom sx={{
-            color: 'success.main',
-            fontWeight: 600,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 1
-          }}>
-            <Savings color="success" />
-            Deductions
-          </Typography>
-          <Divider sx={{ mb: 2 }} />
-          <Grid container spacing={3}>
-            <Grid item xs={12} md={6}>
-              {renderTextField(
-                "Section 80C Deductions",
-                "section80C",
-                "Investments in PPF, ELSS, EPF, Life Insurance Premium, etc. Maximum limit: ₹1.5 lakh",
-                true,
-                max80C
-              )}
-            </Grid>
-            <Grid item xs={12} md={6}>
-              {renderTextField(
-                "Section 80D Deductions",
-                "section80D",
-                "Health Insurance Premium for self and family. Maximum limit: ₹25,000 (₹50,000 for senior citizens)",
-                true,
-                max80D
-              )}
-            </Grid>
-            <Grid item xs={12} md={6}>
-              {renderTextField(
-                "NPS Contributions",
-                "nps",
-                "Additional tax benefit for National Pension System contributions under Section 80CCD(1B). Maximum limit: ₹50,000",
-                true,
-                maxNPS
-              )}
-            </Grid>
-            <Grid item xs={12} md={6}>
-              {renderTextField(
-                "Other Deductions",
-                "otherDeductions",
-                "Other eligible deductions under various sections like 80E (Education Loan), 80G (Donations), etc.",
-                true
-              )}
-            </Grid>
-          </Grid>
-        </Box>
-
-        {/* Calculate Button */}
-        <Button
-          variant="contained"
-          onClick={handleSubmit} // Call handleSubmit which updates parent state
-          fullWidth
-          size="large"
-          startIcon={<Calculate />}
-          sx={{
-            mt: 2,
-            py: 1.5,
-            bgcolor: 'primary.main',
-            '&:hover': {
-              bgcolor: 'primary.dark'
-            }
-          }}
-        >
-          Calculate Tax Liability
-        </Button>
-      </Box>
-    );
+  const handleIncomeChange = (field: keyof UserData) => (e: ChangeEvent<HTMLInputElement>) => {
+    handleUpdateUserData({
+      ...userData,
+      [field]: Number(e.target.value)
+    });
   };
 
-  const TaxSummary: React.FC<{
+  const handleDeductionChange = (field: keyof DeductionsType) => (e: ChangeEvent<HTMLInputElement>) => {
+    handleUpdateUserData({
+      ...userData,
+      deductions: {
+        ...userData.deductions,
+        [field]: Number(e.target.value)
+      }
+    });
+  };
+
+  // Update renderTextField to use string values
+  type RenderTextFieldProps = {
+    label: string;
+    field: UserDataField | DeductionField;
+    tooltip: string;
+    isDeduction?: boolean;
+    maxLimit?: number;
+  };
+
+  const renderTextField = (
+    label: string,
+    field: UserDataField | DeductionField,
+    tooltip: string,
+    isDeduction: boolean = false,
+    maxLimit?: number
+  ) => (
+    <Tooltip 
+      title={tooltip}
+      placement="top-start"
+      arrow
+      sx={{
+        '& .MuiTooltip-tooltip': {
+          bgcolor: 'rgba(0, 0, 0, 0.87)',
+          color: 'white',
+          fontSize: '0.875rem',
+          padding: '8px 12px',
+          borderRadius: '4px'
+        }
+      }}
+    >
+      <TextField
+        fullWidth
+        label={
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+            {label}
+            <Info fontSize="small" color="action" />
+          </Box>
+        }
+        type="text"
+        inputMode="numeric"
+        value={isDeduction 
+          ? userData.deductions[field as DeductionField].toString()
+          : userData[field as UserDataField].toString()
+        }
+        onChange={isDeduction ? handleDeductionChange(field as DeductionField) : handleIncomeChange(field as UserDataField)}
+        error={!!errors[field]}
+        helperText={maxLimit ? `Maximum limit: ₹${maxLimit.toLocaleString()}` : errors[field]}
+        required
+        inputProps={{
+          inputMode: 'numeric',
+          pattern: '[0-9]*',
+          style: { textAlign: 'left' }
+        }}
+        InputProps={{
+          startAdornment: <InputAdornment position="start">₹</InputAdornment>,
+        }}
+      />
+    </Tooltip>
+  );
+
+  const TaxSummary: React.FC<{ 
     breakdown: TaxBreakdown;
+    originalIncome: number;
     recommendations: TaxSavingsRecommendation[];
     onApplyRecommendation: (recommendation: TaxSavingsRecommendation) => void;
-  }> = ({ breakdown, recommendations, onApplyRecommendation }) => {
+    isTie?: boolean;
+  }> = ({ breakdown, originalIncome, recommendations, onApplyRecommendation, isTie }) => {
     const [selectedRegime, setSelectedRegime] = React.useState<TaxRegime>(
       breakdown.recommendedRegime
     );
-
-    const totalIncome = breakdown[selectedRegime].taxableIncome +
-      (breakdown[selectedRegime].totalDeductions || 0);
-
+    const totalIncome = originalIncome;
+    const recommendedTax = breakdown[breakdown.recommendedRegime].totalTax;
+    const selectedTax = breakdown[selectedRegime].totalTax;
+    const savings = selectedTax - recommendedTax;
+    // Move chartData definition here so it's in scope for BarChart
     const chartData = [
       {
         name: 'Total Income',
@@ -601,12 +437,36 @@ const TaxCalculator: React.FC = () => {
         fill: '#42A5F5'
       }
     ];
-
     return (
       <Box>
+        {/* Engaging summary at the top */}
+        <Box sx={{ mb: 3, p: 3, bgcolor: 'success.light', borderRadius: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Box>
+            <Typography variant="h5" sx={{ fontWeight: 700, color: 'success.main', mb: 1 }}>
+              {savings > 0 ? `You can save ₹${Math.abs(savings).toLocaleString()}!` : 'You are already on the best regime!'}
+            </Typography>
+            <Typography variant="body1" sx={{ color: 'text.primary' }}>
+              {savings > 0
+                ? `Switch to the ${breakdown.recommendedRegime.toUpperCase()} regime to minimize your tax liability.`
+                : `Congratulations! The ${breakdown.recommendedRegime.toUpperCase()} regime is optimal for you.`}
+            </Typography>
+          </Box>
+          {savings > 0 && (
+            <Button
+              variant="contained"
+              color="success"
+              size="large"
+              sx={{ fontWeight: 700, fontSize: '1.1rem', borderRadius: 2 }}
+              onClick={() => setSelectedRegime(breakdown.recommendedRegime)}
+            >
+              Switch to {breakdown.recommendedRegime.toUpperCase()} Regime
+            </Button>
+          )}
+        </Box>
+
         {/* Title Section */}
         <Box sx={{ mb: 4 }}>
-          <Typography variant="h5" gutterBottom sx={{
+          <Typography variant="h5" gutterBottom sx={{ 
             color: 'text.primary',
             display: 'flex',
             alignItems: 'center',
@@ -620,19 +480,19 @@ const TaxCalculator: React.FC = () => {
         </Box>
 
         {/* Regime Selection */}
-        <Tabs
+        <MuiTabs 
           value={selectedRegime}
           onChange={(_, newValue: TaxRegime) => setSelectedRegime(newValue)}
           sx={{ mb: 3, borderBottom: 1, borderColor: 'divider' }}
         >
-          <StyledTab
-            value="new"
+          <StyledTab 
+            value="new" 
             label={
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 New regime
-                {breakdown.recommendedRegime === 'new' && (
-                  <Box
-                    sx={{
+                {!isTie && breakdown.recommendedRegime === 'new' && (
+                  <Box 
+                    sx={{ 
                       bgcolor: 'success.light',
                       color: 'success.main',
                       px: 1,
@@ -648,14 +508,14 @@ const TaxCalculator: React.FC = () => {
               </Box>
             }
           />
-          <StyledTab
-            value="old"
+          <StyledTab 
+            value="old" 
             label={
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 Old regime
-                {breakdown.recommendedRegime === 'old' && (
-                  <Box
-                    sx={{
+                {!isTie && breakdown.recommendedRegime === 'old' && (
+                  <Box 
+                    sx={{ 
                       bgcolor: 'success.light',
                       color: 'success.main',
                       px: 1,
@@ -671,7 +531,7 @@ const TaxCalculator: React.FC = () => {
               </Box>
             }
           />
-        </Tabs>
+        </MuiTabs>
 
         <Grid container spacing={3}>
           {/* Left Column - Chart and Basic Info */}
@@ -680,9 +540,9 @@ const TaxCalculator: React.FC = () => {
             <Box sx={{ height: 300, mb: 3 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={chartData} layout="vertical">
-                  <XAxis
-                    type="number"
-                    tickFormatter={(value: number) => `₹${(value / 1000).toFixed(0)}K`}
+                  <XAxis 
+                    type="number" 
+                    tickFormatter={(value: number) => `₹${(value/1000).toFixed(0)}K`} 
                   />
                   <YAxis type="category" dataKey="name" />
                   <Bar dataKey="amount" />
@@ -703,25 +563,35 @@ const TaxCalculator: React.FC = () => {
               <Grid item xs={12}>
                 <Paper sx={{ p: 2, bgcolor: 'background.default' }}>
                   <Typography variant="subtitle2" color="text.secondary">
-                    Exemption and deduction
+                    Total Deductions & Exemptions
                   </Typography>
                   <Typography variant="h4" sx={{ fontWeight: 700 }}>
-                    ₹{(breakdown[selectedRegime].totalDeductions || 0).toLocaleString()}
+                    ₹{(selectedRegime === 'old'
+                        ? (Number(userData.deductions.standardDeduction || 0) +
+                           Number(userData.deductions.section80C || 0) +
+                           Number(userData.deductions.section80D || 0) +
+                           Number(userData.deductions.nps || 0) +
+                           Number(userData.deductions.hraExemption || 0) +
+                           Number(userData.deductions.lta || 0) +
+                           Number(userData.deductions.otherDeductions || 0))
+                        : Number(userData.deductions.standardDeduction || 0)
+                      ).toLocaleString()}
                   </Typography>
                   <Box sx={{ mt: 1 }}>
+                    <Typography variant="body2" color="text.secondary">
+                      Standard Deduction: ₹{userData.deductions.standardDeduction.toLocaleString()}
+                    </Typography>
                     {selectedRegime === 'old' && (
-                      <>
-                        <Typography variant="body2" color="text.secondary">
-                          Standard Deductions: ₹{userData.deductions.standardDeduction.toLocaleString()}
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          Chapter VI A Deductions: ₹{(
-                            userData.deductions.section80C +
-                            userData.deductions.section80D +
-                            userData.deductions.nps
-                          ).toLocaleString()}
-                        </Typography>
-                      </>
+                      <Typography variant="body2" color="text.secondary">
+                        Other Deductions & Exemptions: ₹{(
+                          Number(userData.deductions.section80C || 0) +
+                          Number(userData.deductions.section80D || 0) +
+                          Number(userData.deductions.nps || 0) +
+                          Number(userData.deductions.hraExemption || 0) +
+                          Number(userData.deductions.lta || 0) +
+                          Number(userData.deductions.otherDeductions || 0)
+                        ).toLocaleString()}
+                      </Typography>
                     )}
                   </Box>
                 </Paper>
@@ -748,34 +618,40 @@ const TaxCalculator: React.FC = () => {
           {/* Right Column - Recommendations and Additional Info */}
           <Grid item xs={12} md={6}>
             {/* Tax Savings Alert */}
-            {breakdown.recommendedRegime !== selectedRegime && (
-              <Alert
-                severity="info"
-                sx={{ mb: 3 }}
-                action={
-                  <Button
-                    color="info"
-                    size="small"
-                    onClick={() => {
-                      if (breakdown.recommendedRegime === 'old' || breakdown.recommendedRegime === 'new') {
-                        setSelectedRegime(breakdown.recommendedRegime);
-                      }
-                    }}
-                  >
-                    Switch Regime
-                  </Button>
-                }
-              >
-                You can save ₹{Math.abs(
-                  breakdown[selectedRegime].totalTax - breakdown[breakdown.recommendedRegime].totalTax
-                ).toLocaleString()} by switching to the {breakdown.recommendedRegime} regime
+            {!isTie ? (
+              breakdown.recommendedRegime !== selectedRegime && (
+                <Alert 
+                  severity="info" 
+                  sx={{ mb: 3 }}
+                  action={
+                    <Button 
+                      color="info" 
+                      size="small"
+                      onClick={() => {
+                        if (breakdown.recommendedRegime === 'old' || breakdown.recommendedRegime === 'new') {
+                          setSelectedRegime(breakdown.recommendedRegime);
+                        }
+                      }}
+                    >
+                      Switch Regime
+                    </Button>
+                  }
+                >
+                  You can save ₹{Math.abs(
+                    breakdown[selectedRegime].totalTax - breakdown[breakdown.recommendedRegime].totalTax
+                  ).toLocaleString()} by switching to the {breakdown.recommendedRegime} regime
+                </Alert>
+              )
+            ) : (
+              <Alert severity="info" sx={{ mb: 3 }}>
+                Both regimes result in the same tax. You may choose either.
               </Alert>
             )}
 
             {/* Recommendations Section */}
             {recommendations.length > 0 && (
               <Box sx={{ mb: 3 }}>
-                <Typography variant="h6" gutterBottom sx={{
+                <Typography variant="h6" gutterBottom sx={{ 
                   color: 'success.main',
                   fontWeight: 600,
                   display: 'flex',
@@ -788,9 +664,9 @@ const TaxCalculator: React.FC = () => {
                 <Grid container spacing={2}>
                   {recommendations.map((rec, index) => (
                     <Grid item xs={12} key={index}>
-                      <Card
-                        variant="outlined"
-                        sx={{
+                      <Card 
+                        variant="outlined" 
+                        sx={{ 
                           borderColor: 'success.light',
                           '&:hover': {
                             borderColor: 'success.main',
@@ -822,9 +698,9 @@ const TaxCalculator: React.FC = () => {
             )}
 
             {/* Filing Information */}
-            <Alert
-              severity="info"
-              sx={{
+            <Alert 
+              severity="info" 
+              sx={{ 
                 bgcolor: 'info.light',
                 color: 'info.dark',
                 '& .MuiAlert-icon': {
@@ -833,141 +709,201 @@ const TaxCalculator: React.FC = () => {
               }}
             >
               <AlertTitle>ITR filing due date: July 31, 2025</AlertTitle>
-              Tax calculations include 4% health and education cess.
+              Tax calculations include 4% health and education cess. 
               Actual liability may vary based on document submission.
             </Alert>
           </Grid>
         </Grid>
+
+        <Box sx={{ mt: 6, p: 3, bgcolor: 'background.paper', borderRadius: 2, boxShadow: 1 }}>
+          <Typography variant="h6" gutterBottom sx={{ color: 'primary.main', fontWeight: 700 }}>
+            Guidance: Old vs New Tax Regime
+          </Typography>
+          <Typography variant="body1" gutterBottom>
+            <strong>Old Regime:</strong> Allows most deductions and exemptions (like 80C, 80D, HRA, LTA, etc.). Suitable for those who claim significant deductions.
+          </Typography>
+          <Typography variant="body1" gutterBottom>
+            <strong>New Regime:</strong> Lower tax rates but <strong>no major deductions/exemptions</strong> (except standard deduction). Suitable for those with fewer deductions.
+          </Typography>
+          <Divider sx={{ my: 2 }} />
+          <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>Old Regime Tax Slabs (FY 2024-25):</Typography>
+          <ul style={{ marginTop: 0 }}>
+            <li>Up to ₹2,50,000: <strong>0%</strong></li>
+            <li>₹2,50,001 – ₹5,00,000: <strong>5%</strong></li>
+            <li>₹5,00,001 – ₹10,00,000: <strong>20%</strong></li>
+            <li>Above ₹10,00,000: <strong>30%</strong></li>
+          </ul>
+          <Typography variant="subtitle1" sx={{ fontWeight: 600, mt: 2 }}>New Regime Tax Slabs (FY 2024-25):</Typography>
+          <ul style={{ marginTop: 0 }}>
+            <li>Up to ₹3,00,000: <strong>0%</strong></li>
+            <li>₹3,00,001 – ₹6,00,000: <strong>5%</strong></li>
+            <li>₹6,00,001 – ₹9,00,000: <strong>10%</strong></li>
+            <li>₹9,00,001 – ₹12,00,000: <strong>15%</strong></li>
+            <li>₹12,00,001 – ₹15,00,000: <strong>20%</strong></li>
+            <li>Above ₹15,00,000: <strong>30%</strong></li>
+          </ul>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+            <strong>Note:</strong> Both regimes add 4% health and education cess to the calculated tax. The best regime for you depends on your eligible deductions and exemptions. If you claim many deductions, the old regime may be better. If not, the new regime's lower rates may benefit you.
+          </Typography>
+        </Box>
       </Box>
     );
   };
 
+  // Place this just before the return statement in TaxCalculator
+  const isTie = (() => {
+    if (!taxBreakdown) return false;
+    const taxes = [taxBreakdown.old, taxBreakdown.new, taxBreakdown.revised];
+    const minTax = Math.min(...taxes.map(t => t.totalTax));
+    const regimesWithMinTax = taxes.filter(t => t.totalTax === minTax).map(t => t.regime);
+    return regimesWithMinTax.length > 1;
+  })();
+
+  // New: handle form submit from IncomeForm
+  const handleFormSubmit = (data: UserData) => {
+    setUserData(data);
+    // Calculate tax using the new data immediately
+    const totalIncome =
+      Number(data.basicSalary || 0) +
+      Number(data.variableSalary || 0) +
+      Number(data.otherIncome || 0) +
+      Number(data.housePropertyIncome || 0) +
+      Number(data.longTermCapitalGains || 0) +
+      Number(data.shortTermCapitalGains || 0);
+    // Generate tax savings recommendations
+    const taxRecommendations = generateTaxSavingsRecommendations(totalIncome, data.deductions);
+    setRecommendations(taxRecommendations);
+    // Calculate tax for all regimes
+    const breakdown: TaxBreakdown & { originalIncome: number } = {
+      old: calculateTax(totalIncome, data.deductions, 'old'),
+      new: calculateTax(totalIncome, data.deductions, 'new'),
+      revised: calculateTax(totalIncome, data.deductions, 'revised'),
+      recommendedRegime: 'old',
+      originalIncome: totalIncome
+    };
+    // Determine recommended regime
+    const taxes = [breakdown.old, breakdown.new, breakdown.revised];
+    const minTax = Math.min(...taxes.map(t => t.totalTax));
+    const regimesWithMinTax = taxes.filter(t => t.totalTax === minTax).map(t => t.regime);
+    breakdown.recommendedRegime = regimesWithMinTax[0]; // still pick one for tab default
+    setTaxBreakdown(breakdown);
+    setOriginalIncome(totalIncome);
+    setActiveStep(1);
+  };
+
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
-      <Typography variant="h4" gutterBottom align="center" sx={{
-        fontWeight: 700,
-        color: 'primary.main',
-        mb: 4,
-        textShadow: '2px 2px 4px rgba(0,0,0,0.1)'
-      }}>
-        Smart Tax Planner 2024-25
-      </Typography>
-
-      <Stepper activeStep={activeStep} sx={{ mb: 4 }}>
-        <Step><StepLabel>Income Details</StepLabel></Step>
-        <Step><StepLabel>Tax Analysis</StepLabel></Step>
-      </Stepper>
-
-      {activeStep === 0 ? (
-        <Grid container spacing={3}>
-          <Grid item xs={12} md={8}>
-            <Paper
-              elevation={3}
-              sx={{
-                p: 4,
-                borderRadius: 2,
-                bgcolor: 'background.paper',
-                boxShadow: '0 4px 20px rgba(0,0,0,0.1)'
-              }}
-            >
-              <IncomeForm
-                userData={userData}
-                errors={errors}
-                onUpdate={handleUpdateUserData} // Pass the function that updates the userData state
-                onCalculate={handleCalculate}
-                max80C={150000}
-                max80D={100000}
-                maxNPS={50000}
-              />
-            </Paper>
-          </Grid>
-          <Grid item xs={12} md={4}>
-            <Card
-              variant="outlined"
-              sx={{
-                mb: 2,
-                borderColor: 'info.light',
-                bgcolor: 'info.light',
-                '&:hover': {
-                  boxShadow: 3,
-                  borderColor: 'info.main'
-                }
-              }}
-            >
-              <CardContent>
-                <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 600, color: 'info.dark' }}>
-                  Quick Tax Tips
-                </Typography>
-                <Divider sx={{ mb: 2, borderColor: 'info.main' }} />
-                <List dense>
-                  <ListItem sx={{ py: 0.5 }}>
-                    <ListItemText
-                      primary="• Standard deduction: ₹50,000 for all employees"
-                      primaryTypographyProps={{ color: 'text.primary' }}
-                    />
-                  </ListItem>
-                  <ListItem sx={{ py: 0.5 }}>
-                    <ListItemText
-                      primary="• Section 80C limit: ₹1.5 lakh (EPF, PPF, ELSS, etc.)"
-                      primaryTypographyProps={{ color: 'text.primary' }}
-                    />
-                  </ListItem>
-                  <ListItem sx={{ py: 0.5 }}>
-                    <ListItemText
-                      primary="• NPS additional deduction: ₹50,000 under 80CCD(1B)"
-                      primaryTypographyProps={{ color: 'text.primary' }}
-                    />
-                  </ListItem>
-                </List>
-              </CardContent>
-            </Card>
-          </Grid>
-        </Grid>
-      ) : (
-        <Grid container spacing={3}>
-          <Grid item xs={12}>
-            <Paper
-              elevation={3}
-              sx={{
-                p: 4,
-                borderRadius: 2,
-                bgcolor: 'background.paper',
-                boxShadow: '0 4px 20px rgba(0,0,0,0.1)'
-              }}
-            >
-              <Box sx={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                mb: 3
-              }}>
-                <Typography variant="h5" component="div" sx={{ color: 'primary.main', fontWeight: 600 }}>
-                  Tax Breakdown
-                </Typography>
-                <Button
-                  variant="outlined"
-                  startIcon={<ArrowBack />}
-                  onClick={() => setActiveStep(0)}
-                  size="small"
-                  sx={{
-                    textTransform: 'none',
-                    borderColor: 'primary.main',
-                    color: 'primary.main',
-                    '&:hover': {
-                      borderColor: 'primary.dark',
-                      bgcolor: 'primary.light'
-                    }
-                  }}
-                >
-                  Modify Inputs
-                </Button>
+    <Box sx={{
+      bgcolor: 'white',
+      minHeight: '100vh',
+      py: 0,
+      px: 5,
+      border: '2px solid transparent',
+      backgroundImage: 'linear-gradient(white, white), radial-gradient(circle at top left,rgb(255, 255, 255),rgb(255, 255, 255))',
+      backgroundOrigin: 'border-box',
+      backgroundClip: 'content-box, border-box'
+    }}>
+      <Box sx={{ maxWidth: '100%', mx: 0, px: 0 }}>
+        {/* Header and Menu */}
+        <Box sx={{ display: 'flex', alignItems: 'center', pt: 4, pb: 1 }}>
+          <Typography variant="h4" sx={{ fontWeight: 900, flex: 0, textAlign: 'left', color: 'primary.main', letterSpacing: 1 }}>
+            Financly
+          </Typography>
+        </Box>
+        <MuiTabs
+          value={menuTab}
+          onChange={(_, v) => setMenuTab(v)}
+          textColor="primary"
+          indicatorColor="primary"
+          sx={{ mb: 3, borderBottom: 1, borderColor: 'divider' }}
+        >
+          <MuiTab label="Income Tax Planner" sx={{ fontWeight: 700, fontSize: '1rem', textTransform: 'none' }} />
+          <MuiTab label="Mutual Fund Calculator" sx={{ fontWeight: 700, fontSize: '1rem', textTransform: 'none' }} />
+          <MuiTab label="Retirement Planning" sx={{ fontWeight: 700, fontSize: '1rem', textTransform: 'none' }} />
+          <MuiTab label="Insurance Needs" sx={{ fontWeight: 700, fontSize: '1rem', textTransform: 'none' }} />
+          <MuiTab label="Loan EMI" sx={{ fontWeight: 700, fontSize: '1rem', textTransform: 'none' }} />
+          <MuiTab label="More" sx={{ fontWeight: 700, fontSize: '1rem', textTransform: 'none' }} />
+        </MuiTabs>
+        <Box sx={{ display: 'flex', justifyContent: 'center', mb: 3 }}>
+          <Box sx={{ display: 'flex', gap: 2 }}>
+            <Box sx={{
+              bgcolor: activeStep === 0 ? 'primary.main' : '#e0e0e0',
+              color: activeStep === 0 ? 'white' : 'text.primary',
+              px: 2, py: 0.5, borderRadius: 2, fontWeight: 700, fontSize: '1rem'
+            }}>
+              1 Income Details
+            </Box>
+            <Box sx={{
+              bgcolor: activeStep === 1 ? 'primary.main' : '#e0e0e0',
+              color: activeStep === 1 ? 'white' : 'text.primary',
+              px: 2, py: 0.5, borderRadius: 2, fontWeight: 700, fontSize: '1rem'
+            }}>
+              2 Tax Analysis
+            </Box>
+          </Box>
+        </Box>
+        <Divider sx={{ mb: 3 }} />
+        <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+          <Paper elevation={3} sx={{ p: { xs: 2, md: 4 }, borderRadius: 3, width: '100%', maxWidth: 1000, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            {/* Alert/info box at the top */}
+            <Alert severity="warning" sx={{ mb: 3, borderRadius: 2, fontSize: '1rem', alignItems: 'center', width: '100%' }}>
+              Please fill in your income details. Only total income must be greater than zero.
+            </Alert>
+            {(!taxBreakdown || activeStep === 0) && (
+              <Grid container spacing={4} alignItems="flex-start" sx={{ width: '100%' }}>
+                {/* Left: Main Form */}
+                <Grid item xs={12} md={7}>
+                  <IncomeForm
+                    userData={userData}
+                    errors={errors}
+                    onUpdate={handleUpdateUserData}
+                    onSubmit={handleFormSubmit}
+                    max80C={150000}
+                    max80D={100000}
+                    maxNPS={50000}
+                  />
+                </Grid>
+                {/* Right: Quick Tax Tips Card (inside main card) */}
+                <Grid item xs={12} md={5}>
+                  <Paper elevation={0} sx={{ p: 3, borderRadius: 2, bgcolor: 'info.light', minHeight: 400 }}>
+                    <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, color: 'primary.main' }}>
+                      Quick Tax Tips
+                    </Typography>
+                    <Divider sx={{ mb: 2, borderColor: 'primary.main' }} />
+                    <Box component="ul" sx={{ pl: 2, m: 0, color: 'text.primary', fontSize: '1.05rem' }}>
+                      <li style={{ marginBottom: 16 }}>
+                        Standard deduction: ₹50,000 for all employees
+                      </li>
+                      <li style={{ marginBottom: 16 }}>
+                        Section 80C limit: ₹1.5 lakh (EPF, PPF, ELSS, etc.)
+                      </li>
+                      <li>
+                        NPS additional deduction: ₹50,000 under 80CCD(1B)
+                      </li>
+                    </Box>
+                  </Paper>
+                </Grid>
+              </Grid>
+            )}
+            {taxBreakdown && activeStep === 1 && (
+              <Box sx={{ width: '100%' }}>
+                <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
+                  <Button variant="outlined" color="primary" onClick={() => setActiveStep(0)}>
+                    Modify Inputs
+                  </Button>
+                </Box>
+                <TaxSummary
+                  breakdown={taxBreakdown}
+                  originalIncome={originalIncome}
+                  recommendations={recommendations}
+                  onApplyRecommendation={handleApplyRecommendation}
+                  isTie={isTie}
+                />
               </Box>
-              {taxBreakdown && <TaxSummary breakdown={taxBreakdown} recommendations={recommendations} onApplyRecommendation={handleApplyRecommendation} />}
-            </Paper>
-          </Grid>
-        </Grid>
-      )}
-    </Container>
+            )}
+          </Paper>
+        </Box>
+      </Box>
+    </Box>
   );
 };
 

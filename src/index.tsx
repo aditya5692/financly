@@ -2,7 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
-import TaxCalculator from './components/TaxCalculator';
+import App from './App';
 
 const theme = createTheme({
   palette: {
@@ -64,7 +64,7 @@ root.render(
   <React.StrictMode>
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <TaxCalculator />
+      <App />
     </ThemeProvider>
   </React.StrictMode>
 ); 

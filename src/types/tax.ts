@@ -14,6 +14,9 @@ export interface UserData {
   basicSalary: number;
   variableSalary: number;
   otherIncome: number;
+  housePropertyIncome: number;
+  longTermCapitalGains: number;
+  shortTermCapitalGains: number;
   deductions: DeductionsType;
 }
 
