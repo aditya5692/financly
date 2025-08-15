@@ -2,17 +2,35 @@
   "version": 2,
   "builds": [
     {
+      "src": "assets/**",
+      "use": "@vercel/static"
+    },
+    {
       "src": "*.html",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "*.json",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "*.xml",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "*.txt",
       "use": "@vercel/static"
     }
   ],
   "routes": [
     {
+      "src": "/financly-homepage",
+      "dest": "/financly-homepage.html"
+    },
+    {
       "src": "/(.*)",
       "dest": "/$1"
     }
-  ],
-  "github": {
-    "silent": true
-  }
+  ]
 }
+
