@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Financly - Tax Regime Comparison | AY 2025-26 & 2026-27</title>
+    <meta name="description" content="Compare tax regimes for AY 2025-26 & 2026-27. Find the best tax regime for your income with official IT Department slabs.">
+    <meta name="keywords" content="tax regime comparison India, old vs new regime, tax calculator India">
+    <meta name="author" content="Financly">
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --primary: #1976d2;
+            --primary-dark: #1565c0;
+            --secondary: #9c27b0;
+            --accent: #2e7d32;
+            --success: #2e7d32;
+            --warning: #f57c00;
+            --text-primary: #333;
+            --text-secondary: #666;
+            --text-muted: #999;
+            --bg-primary: #ffffff;
+            --bg-secondary: #f8fafc;
+            --bg-tertiary: #f1f5f9;
+            --bg-card: #ffffff;
+            --border: rgba(25, 118, 210, 0.1);
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            --bg-gradient: linear-gradient(135deg, rgba(25, 118, 210, 0.02) 0%, rgba(156, 39, 176, 0.02) 100%);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-gradient);
+            color: var(--text-primary);
+            line-height: 1.6;
+            padding-top: 80px;
+        }
+
+        /* Header Styles */
+        .header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(25, 118, 210, 0.1);
+            z-index: 1000;
+            padding: 0.8rem 0;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 20px rgba(0, 0, 0, 0.08);
+        }
+
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 clamp(1rem, 4vw, 2rem);
+            height: 60px;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            text-decoration: none;
+            color: var(--primary);
+            font-weight: 800;
+            font-size: 1.6rem;
+            letter-spacing: -0.02em;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            padding: 0.5rem 0;
+        }
+
+        .logo-icon {
+            margin-right: 0.5rem;
+            font-size: 1.8rem;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+
+        .nav-link {
+            text-decoration: none;
+            color: var(--text-secondary);
+            font-weight: 500;
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+            padding: 0.6rem 1rem;
+            border-radius: 8px;
+            letter-spacing: -0.01em;
+        }
+
+        .nav-link:hover {
+            color: var(--primary);
+            background: rgba(25, 118, 210, 0.05);
+        }
+
+        .nav-link.active {
+            color: var(--primary);
+            background: rgba(25, 118, 210, 0.1);
+            font-weight: 600;
+        }
+
+        /* Year Selector Styles */
+        .year-selector {
+            margin-left: 1rem;
+            position: relative;
+        }
+
+        .year-dropdown {
+            background: var(--bg-card);
+            border: 2px solid rgba(25, 118, 210, 0.1);
+            border-radius: 8px;
+            padding: 0.5rem 1rem;
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-width: 130px;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 0.8rem center;
+            padding-right: 2.5rem;
+        }
+
+        .year-dropdown:hover {
+            border-color: var(--primary);
+            background-color: rgba(25, 118, 210, 0.02);
+        }
+
+        .year-dropdown:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.1);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem clamp(1rem, 4vw, 2rem);
+        }
+
+        /* Comparison Section */
+        .comparison-section {
+            background: var(--bg-card);
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: var(--shadow-md);
+            margin: 2rem 0;
+        }
+
+        .section-title {
+            text-align: center;
+            color: var(--primary);
+            margin-bottom: 2rem;
+            font-size: 1.8rem;
+            font-weight: 700;
+        }
+
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--bg-card);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .comparison-table th {
+            background: var(--primary);
+            color: white;
+            padding: 1rem;
+            text-align: left;
+        }
+
+        .comparison-table td {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .comparison-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .year-selector {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-left: 2rem;
+        }
+
+        .year-dropdown {
+            background: var(--bg-card);
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            padding: 0.5rem 0.75rem;
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-width: 120px;
+        }
+
+        .year-dropdown:hover {
+            border-color: var(--primary);
+        }
+
+        .year-dropdown:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .info-text {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            text-align: center;
+            margin-top: 1rem;
+        }
+
+        .highlight {
+            color: var(--primary);
+            font-weight: 600;
+        }
+
+        @media (max-width: 768px) {
+            .comparison-table {
+                font-size: 0.9rem;
+            }
+            
+            .section-title {
+                font-size: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <a href="financly-homepage.html" class="logo">
+                <span class="logo-icon">₹</span>
+                Financly
+            </a>
+            <nav class="nav-links">
+                <a href="financly-homepage.html" class="nav-link">Home</a>
+                <a href="complete-tax-calculator.html" class="nav-link">Calculator</a>
+                <a href="regime-compare.html" class="nav-link active">Compare</a>
+                <a href="#" class="nav-link" onclick="window.location.href='complete-tax-calculator.html#tax-calendar'">Calendar</a>
+                
+                <!-- Year Selector -->
+                <div class="year-selector">
+                    <select id="taxYear" class="year-dropdown" disabled>
+                        <option value="2025-26">AY 2025-26</option>
+                    </select>
+                </div>
+            </nav>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="comparison-section">
+            <h1 class="section-title">📊 Tax Year Comparison: AY 2025-26 vs AY 2026-27</h1>
+            
+            <table class="comparison-table">
+                <thead>
+                    <tr>
+                        <th>Feature</th>
+                        <th>AY 2025-26</th>
+                        <th>AY 2026-27</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>New Regime - Basic Exemption</td>
+                        <td>₹3,00,000</td>
+                        <td class="highlight">₹4,00,000 ↑</td>
+                    </tr>
+                    <tr>
+                        <td>New Regime - Standard Deduction</td>
+                        <td>₹50,000</td>
+                        <td class="highlight">₹75,000 ↑</td>
+                    </tr>
+                    <tr>
+                        <td>New Regime - Rebate Limit</td>
+                        <td>₹7,00,000</td>
+                        <td class="highlight">₹12,00,000 ↑</td>
+                    </tr>
+                    <tr>
+                        <td>New Regime - Max Rebate</td>
+                        <td>₹20,000</td>
+                        <td class="highlight">₹60,000 ↑</td>
+                    </tr>
+                    <tr>
+                        <td>Old Regime</td>
+                        <td>No Changes</td>
+                        <td>No Changes</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <p class="info-text">💡 Use the year selector in the top-right to switch between tax years and see updated calculations</p>
+        </div>
+    </div>
+
+    <script>
+        function updateTaxYear() {
+            const year = document.getElementById('taxYear').value;
+            // Add year update logic here
+            console.log('Selected year:', year);
+        }
+
+        // Add header visibility logic on scroll
+        let lastScroll = 0;
+        window.addEventListener('scroll', () => {
+            const header = document.querySelector('.header');
+            const currentScroll = window.pageYOffset;
+
+            if (currentScroll <= 0) {
+                header.classList.remove('visible');
+                return;
+            }
+
+            if (currentScroll > lastScroll) {
+                header.classList.remove('visible');
+            } else {
+                header.classList.add('visible');
+            }
+            lastScroll = currentScroll;
+        });
+    </script>
+</body>
+</html>

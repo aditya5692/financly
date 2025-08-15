@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Income Tax Calculator FY 2024-25</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        .step {
+            display: none;
+            background: white;
+            border-radius: 20px;
+            padding: 3rem;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            margin: 2rem 0;
+        }
+        
+        .step.active {
+            display: block;
+            animation: slideIn 0.5s ease;
+        }
+        
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+        }
+        
+        h2 {
+            text-align: center;
+            color: #34495e;
+            font-size: 1.8rem;
+            margin-bottom: 2rem;
+        }
+        
+        .subtitle {
+            text-align: center;
+            color: #7f8c8d;
+            margin-bottom: 2rem;
+            font-size: 1.1rem;
+        }
+        
+        .income-input {
+            text-align: center;
+            margin: 2rem 0;
+        }
+        
+        .income-input input {
+            width: 100%;
+            max-width: 400px;
+            padding: 1rem 1rem 1rem 3rem;
+            font-size: 1.5rem;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            text-align: center;
+        }
+        
+        .income-input input:focus {
+            outline: none;
+            border-color: #3498db;
+        }
+        
+        .currency {
+            position: absolute;
+            left: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 1.5rem;
+            color: #3498db;
+            font-weight: bold;
+        }
+        
+        .input-wrapper {
+            position: relative;
+            display: inline-block;
+            width: 100%;
+            max-width: 400px;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            color: white;
+            border: none;
+            padding: 1rem 2rem;
+            font-size: 1.2rem;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: block;
+            margin: 2rem auto;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(52, 152, 219, 0.3);
+        }
+        
+        .choice-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin: 2rem 0;
+        }
+        
+        .choice-card {
+            background: #f8f9fa;
+            border: 2px solid #e9ecef;
+            border-radius: 15px;
+            padding: 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .choice-card:hover {
+            border-color: #3498db;
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(52, 152, 219, 0.2);
+        }
+        
+        .choice-card h3 {
+            color: #2c3e50;
+            margin-bottom: 1rem;
+        }
+        
+        .choice-card p {
+            color: #7f8c8d;
+            line-height: 1.5;
+        }
+        
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin: 2rem 0;
+        }
+        
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+        
+        .form-group input {
+            width: 100%;
+            padding: 0.8rem;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 1rem;
+        }
+        
+        .form-group input:focus {
+            outline: none;
+            border-color: #3498db;
+        }
+        
+        .results {
+            background: #f8f9fa;
+            padding: 2rem;
+            border-radius: 15px;
+            margin: 2rem 0;
+        }
+        
+        .regime-comparison {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin: 2rem 0;
+        }
+        
+        .regime-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 10px;
+            text-align: center;
+            border: 2px solid #e9ecef;
+        }
+        
+        .regime-card.best {
+            border-color: #27ae60;
+            background: #d5f4e6;
+        }
+        
+        .tax-amount {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #3498db;
+            margin: 1rem 0;
+        }
+        
+        .regime-card.best .tax-amount {
+            color: #27ae60;
+        }
+        
+        .investment-suggestions {
+            background: #e8f5e8;
+            padding: 2rem;
+            border-radius: 15px;
+            margin-top: 2rem;
+        }
+        
+        .investment-suggestions h3 {
+            color: #27ae60;
+            margin-bottom: 1rem;
+        }
+        
+        .investment-list {
+            list-style: none;
+            padding: 0;
+        }
+        
+        .investment-list li {
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #d4edda;
+        }
+        
+        .investment-list li:before {
+            content: "💡 ";
+            margin-right: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Step 1: Simple Income Input -->
+        <div class="step active" id="step1">
+            <h1>💰 Income Tax Calculator</h1>
+            <p class="subtitle">FY 2024-25 | Calculate Smart, Save More</p>
+            
+            <h2>What is your total annual income?</h2>
+            
+            <div class="income-input">
+                <div class="input-wrapper">
+                    <span class="currency">₹</span>
+                    <input type="text" id="totalIncome" placeholder="Enter your total income" oninput="formatNumber(this)">
+                </div>
+            </div>
+            
+            <button class="btn" onclick="goToStep2()">Let's Go! 🚀</button>
+        </div>
+        
+        <!-- Step 2: Income Type Choice -->
+        <div class="step" id="step2">
+            <h2>Income Breakdown</h2>
+            <p class="subtitle">Total Income: ₹<span id="displayIncome">0</span></p>
+            
+            <h3 style="text-align: center; margin-bottom: 2rem;">Do you want to provide income breakdown?</h3>
+            
+            <div class="choice-grid">
+                <div class="choice-card" onclick="chooseBreakdown(true)">
+                    <h3>📊 Yes, Provide Breakdown</h3>
+                    <p>Salary, Business Income, House Rent, Capital Gains, etc.</p>
+                </div>
+                
+                <div class="choice-card" onclick="chooseBreakdown(false)">
+                    <h3>⚡ Quick Calculate</h3>
+                    <p>Use total income as salary income</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Step 3: Income Details -->
+        <div class="step" id="step3">
+            <h2>📊 Income Details</h2>
+            
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>💼 Salary Income</label>
+                    <input type="text" id="salary" placeholder="Annual Salary" oninput="formatNumber(this)">
+                </div>
+                
+                <div class="form-group">
+                    <label>🏢 Business Income</label>
+                    <input type="text" id="business" placeholder="Business/Professional Income" oninput="formatNumber(this)">
+                </div>
+                
+                <div class="form-group">
+                    <label>🏠 House Property Income</label>
+                    <input type="text" id="rental" placeholder="Rental Income" oninput="formatNumber(this)">
+                </div>
+                
+                <div class="form-group">
+                    <label>📈 Capital Gains</label>
+                    <input type="text" id="capitalGains" placeholder="Capital Gains" oninput="formatNumber(this)">
+                </div>
+                
+                <div class="form-group">
+                    <label>💰 Other Income</label>
+                    <input type="text" id="otherIncome" placeholder="Interest, Dividend, etc." oninput="formatNumber(this)">
+                </div>
+            </div>
+            
+            <button class="btn" onclick="goToStep4()">Next: Deductions 📋</button>
+        </div>
+
+        <!-- Step 4: Deductions -->
+        <div class="step" id="step4">
+            <h2>📋 Deductions & Tax Savings</h2>
+
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>💳 Section 80C (Max ₹1.5L)</label>
+                    <input type="text" id="section80C" placeholder="PPF, ELSS, Life Insurance" oninput="formatNumber(this)">
+                </div>
+
+                <div class="form-group">
+                    <label>🏥 Section 80D (Max ₹25K)</label>
+                    <input type="text" id="section80D" placeholder="Health Insurance Premium" oninput="formatNumber(this)">
+                </div>
+
+                <div class="form-group">
+                    <label>🏠 HRA Exemption</label>
+                    <input type="text" id="hra" placeholder="House Rent Allowance" oninput="formatNumber(this)">
+                </div>
+
+                <div class="form-group">
+                    <label>🎯 NPS (Max ₹50K)</label>
+                    <input type="text" id="nps" placeholder="National Pension Scheme" oninput="formatNumber(this)">
+                </div>
+            </div>
+
+            <button class="btn" onclick="calculateTax()">Calculate My Tax! 🧮</button>
+        </div>
+
+        <!-- Step 5: Results -->
+        <div class="step" id="step5">
+            <h2>🎉 Your Tax Calculation Results</h2>
+
+            <div class="results">
+                <div class="regime-comparison" id="resultsContainer">
+                    <!-- Results will be populated by JavaScript -->
+                </div>
+
+                <div class="investment-suggestions">
+                    <h3>💡 Smart Tax Planning Suggestions</h3>
+                    <ul class="investment-list">
+                        <li><strong>Maximize Section 80C:</strong> Invest up to ₹1.5L in PPF, ELSS, NSC</li>
+                        <li><strong>Health Insurance:</strong> Get ₹25K deduction under Section 80D</li>
+                        <li><strong>NPS Investment:</strong> Additional ₹50K deduction under 80CCD(1B)</li>
+                        <li><strong>ELSS Mutual Funds:</strong> 3-year lock-in with market returns</li>
+                        <li><strong>PPF:</strong> 15-year lock-in with tax-free returns</li>
+                        <li><strong>NSC:</strong> 5-year fixed returns with compounding</li>
+                    </ul>
+                </div>
+            </div>
+
+            <button class="btn" onclick="restart()">🔄 Calculate Again</button>
+        </div>
+    </div>
+
+    <script>
+        let currentStep = 1;
+        let totalIncome = 0;
+        let showBreakdown = false;
+
+        // Format numbers with commas
+        function formatNumber(input) {
+            let value = input.value.replace(/[^0-9]/g, '');
+            if (value) {
+                input.value = parseInt(value).toLocaleString('en-IN');
+            }
+        }
+
+        // Get numeric value from formatted string
+        function getNumericValue(formattedValue) {
+            return parseInt(formattedValue.replace(/[^0-9]/g, '')) || 0;
+        }
+
+        function goToStep2() {
+            const income = document.getElementById('totalIncome').value;
+            if (!income || getNumericValue(income) <= 0) {
+                alert('Please enter a valid income amount');
+                return;
+            }
+
+            totalIncome = getNumericValue(income);
+            document.getElementById('displayIncome').textContent = totalIncome.toLocaleString('en-IN');
+            showStep(2);
+        }
+
+        function chooseBreakdown(choice) {
+            showBreakdown = choice;
+            if (choice) {
+                // Set salary as total income initially
+                document.getElementById('salary').value = totalIncome.toLocaleString('en-IN');
+                showStep(3);
+            } else {
+                // Skip to deductions
+                showStep(4);
+            }
+        }
+
+        function goToStep4() {
+            showStep(4);
+        }
+
+        function calculateTax() {
+            // Get income values
+            let salary = showBreakdown ? getNumericValue(document.getElementById('salary').value) : totalIncome;
+            let business = showBreakdown ? getNumericValue(document.getElementById('business').value) : 0;
+            let rental = showBreakdown ? getNumericValue(document.getElementById('rental').value) : 0;
+            let capitalGains = showBreakdown ? getNumericValue(document.getElementById('capitalGains').value) : 0;
+            let otherIncome = showBreakdown ? getNumericValue(document.getElementById('otherIncome').value) : 0;
+
+            let totalGrossIncome = salary + business + rental + capitalGains + otherIncome;
+
+            // Get deductions
+            let section80C = Math.min(getNumericValue(document.getElementById('section80C').value), 150000);
+            let section80D = Math.min(getNumericValue(document.getElementById('section80D').value), 25000);
+            let hra = getNumericValue(document.getElementById('hra').value);
+            let nps = Math.min(getNumericValue(document.getElementById('nps').value), 50000);
+
+            let totalDeductions = section80C + section80D + hra + nps + 50000; // 50000 is standard deduction
+
+            // Calculate tax for each regime
+            let oldRegimeTaxableIncome = Math.max(0, totalGrossIncome - totalDeductions);
+            let newRegimeTaxableIncome = Math.max(0, totalGrossIncome - 50000); // Only standard deduction
+
+            let oldRegimeTax = calculateTaxAmount(oldRegimeTaxableIncome, 'old');
+            let newRegimeTax = calculateTaxAmount(newRegimeTaxableIncome, 'new');
+
+            // Determine best regime
+            let bestRegime = oldRegimeTax <= newRegimeTax ? 'old' : 'new';
+
+            // Display results
+            displayResults(oldRegimeTax, newRegimeTax, bestRegime, oldRegimeTaxableIncome, newRegimeTaxableIncome);
+            showStep(5);
+        }
+
+        function calculateTaxAmount(taxableIncome, regime) {
+            let tax = 0;
+
+            if (regime === 'old') {
+                // Old regime slabs
+                if (taxableIncome > 250000) tax += Math.min(taxableIncome - 250000, 250000) * 0.05;
+                if (taxableIncome > 500000) tax += Math.min(taxableIncome - 500000, 500000) * 0.20;
+                if (taxableIncome > 1000000) tax += (taxableIncome - 1000000) * 0.30;
+            } else {
+                // New regime slabs
+                if (taxableIncome > 300000) tax += Math.min(taxableIncome - 300000, 300000) * 0.05;
+                if (taxableIncome > 600000) tax += Math.min(taxableIncome - 600000, 300000) * 0.10;
+                if (taxableIncome > 900000) tax += Math.min(taxableIncome - 900000, 300000) * 0.15;
+                if (taxableIncome > 1200000) tax += Math.min(taxableIncome - 1200000, 300000) * 0.20;
+                if (taxableIncome > 1500000) tax += (taxableIncome - 1500000) * 0.30;
+            }
+
+            // Add cess (4%)
+            tax = tax * 1.04;
+
+            return Math.round(tax);
+        }
+
+        function displayResults(oldTax, newTax, bestRegime, oldTaxableIncome, newTaxableIncome) {
+            const container = document.getElementById('resultsContainer');
+
+            container.innerHTML = `
+                <div class="regime-card ${bestRegime === 'old' ? 'best' : ''}">
+                    <h4>📜 Old Regime ${bestRegime === 'old' ? '✨ Best Choice' : ''}</h4>
+                    <div class="tax-amount">₹${oldTax.toLocaleString('en-IN')}</div>
+                    <p>Taxable Income: ₹${oldTaxableIncome.toLocaleString('en-IN')}</p>
+                    <p>Effective Rate: ${((oldTax / oldTaxableIncome) * 100 || 0).toFixed(2)}%</p>
+                </div>
+
+                <div class="regime-card ${bestRegime === 'new' ? 'best' : ''}">
+                    <h4>🆕 New Regime ${bestRegime === 'new' ? '✨ Best Choice' : ''}</h4>
+                    <div class="tax-amount">₹${newTax.toLocaleString('en-IN')}</div>
+                    <p>Taxable Income: ₹${newTaxableIncome.toLocaleString('en-IN')}</p>
+                    <p>Effective Rate: ${((newTax / newTaxableIncome) * 100 || 0).toFixed(2)}%</p>
+                </div>
+
+                <div class="regime-card">
+                    <h4>💰 You Save</h4>
+                    <div class="tax-amount">₹${Math.abs(oldTax - newTax).toLocaleString('en-IN')}</div>
+                    <p>By choosing ${bestRegime === 'old' ? 'Old' : 'New'} Regime</p>
+                    <p>Smart Choice! 🎯</p>
+                </div>
+            `;
+        }
+
+        function showStep(step) {
+            // Hide all steps
+            document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+            // Show current step
+            document.getElementById('step' + step).classList.add('active');
+            currentStep = step;
+
+            // Scroll to top
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function restart() {
+            // Reset all values
+            document.getElementById('totalIncome').value = '';
+            document.querySelectorAll('input[type="text"]').forEach(input => input.value = '');
+            totalIncome = 0;
+            showBreakdown = false;
+            showStep(1);
+        }
+    </script>
+</body>
+</html>
