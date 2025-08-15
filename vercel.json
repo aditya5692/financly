@@ -24,10 +24,6 @@
   ],
   "routes": [
     {
-      "src": "/financly-homepage",
-      "dest": "/financly-homepage.html"
-    },
-    {
       "src": "/(.*)",
       "dest": "/$1"
     }
